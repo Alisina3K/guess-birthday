@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5a3fd6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Birthday">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Guess Birthday</title>
+<style>
+:root{
+  --bg:#f1edfa; --card:#ffffff; --ink:#1e1a3a; --muted:#6c6790; --line:#ddd6f3;
+  --accent:#5a3fd6; --on-accent:#ffffff; --cell:#f6f3fd;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#14121f; --card:#1f1c2f; --ink:#ece9fb; --muted:#9a95bd; --line:#34304d;
+    --accent:#a18cff; --on-accent:#17132b; --cell:#272339;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#14121f; --card:#1f1c2f; --ink:#ece9fb; --muted:#9a95bd; --line:#34304d;
+  --accent:#a18cff; --on-accent:#17132b; --cell:#272339;
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  display:flex;justify-content:center;align-items:center;padding:20px 16px;
+}
+main{width:100%;max-width:420px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;color:var(--muted);font-size:.9rem}
+.dots{display:flex;gap:6px}
+.dots i{width:22px;height:5px;border-radius:3px;background:var(--line)}
+.dots i.on{background:var(--accent)}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:22px 18px}
+h1{font-size:1.2rem;line-height:1.4;margin:0 0 16px;font-weight:650}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.grid span{
+  background:var(--cell);border-radius:12px;padding:12px 0;text-align:center;
+  font-weight:800;font-size:1.25rem;font-variant-numeric:tabular-nums;
+}
+.btns{display:flex;gap:10px}
+button{
+  font:inherit;font-weight:600;font-size:1.05rem;border-radius:14px;padding:14px;cursor:pointer;flex:1;
+  border:2px solid var(--accent);background:transparent;color:var(--accent);
+}
+button.yes{background:var(--accent);color:var(--on-accent)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.back{border:none;flex:none;margin-top:14px;padding:8px 4px;font-size:.9rem;color:var(--muted);font-weight:400}
+.back[hidden]{display:none}
+.result{text-align:center}
+.result p{margin:0;color:var(--muted)}
+.big{font-size:6.5rem;font-weight:800;line-height:1.2;color:var(--accent);margin:6px 0 24px}
+@media (prefers-reduced-motion:no-preference){
+  .big{animation:pop .45s ease-out}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+(function(){
+  var N = 5, sets = [];
+  for (var b = 0; b < N; b++) {
+    var a = [];
+    for (var n = 1; n <= 31; n++) if ((n >> b) & 1) a.push(n);
+    sets.push(a);
+  }
+  var app = document.getElementById('app');
+  var step = 0, ans = [];
+
+  function dots(cur){
+    var s = '';
+    for (var i = 0; i < N; i++) s += '<i class="' + (i <= cur ? 'on' : '') + '"></i>';
+    return '<div class="dots">' + s + '</div>';
+  }
+
+  function ask(){
+    var cells = sets[step].map(function(n){ return '<span>' + n + '</span>'; }).join('');
+    app.innerHTML =
+      '<div class="top"><span>Card ' + (step + 1) + ' of ' + N + '</span>' + dots(step) + '</div>' +
+      '<div class="card">' +
+        '<h1>Is your birthday date in this card?</h1>' +
+        '<div class="grid">' + cells + '</div>' +
+        '<div class="btns"><button class="yes" data-a="1">Yes</button><button data-a="0">No</button></div>' +
+        '<button class="back" ' + (step === 0 ? 'hidden' : '') + ' data-back="1">Previous card</button>' +
+      '</div>';
+  }
+
+  function result(){
+    var day = 0;
+    ans.forEach(function(v, i){ if (v) day += 1 << i; });
+    var body = day === 0
+      ? '<p>We couldn’t find your date.</p><div style="height:24px"></div>'
+      : '<p>Your birthday is on day</p><div class="big">' + day + '</div>';
+    app.innerHTML =
+      '<div class="top"><span>Result</span>' + dots(N) + '</div>' +
+      '<div class="card result">' + body + '<button class="yes" data-restart="1">Play again</button></div>';
+  }
+
+  app.addEventListener('click', function(e){
+    var t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.a !== undefined) { ans[step] = +t.dataset.a; step++; if (step < N) ask(); else result(); }
+    else if (t.dataset.back) { step = Math.max(0, step - 1); ask(); }
+    else if (t.dataset.restart) { step = 0; ans = []; ask(); }
+  });
+
+  ask();
+
+  try {
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    }
+  } catch (err) {}
+})();
+</script>
+</body>
+</html>
